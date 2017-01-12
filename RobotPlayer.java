@@ -1,8 +1,6 @@
 package spacegavinplayer;
 import battlecode.common.*;
 
-import java.util.ArrayList;
-
 public strictfp class RobotPlayer {
     static RobotController rc;
     static ExpectiArena arena = new ExpectiArena();
@@ -51,7 +49,107 @@ public strictfp class RobotPlayer {
 
     static void dodge(){
         BulletInfo[] bullets = rc.senseNearbyBullets(); // get bullets to dodge
-        
+        // TODO: rest if no bullets
+        /* refined quadrant check. Voronay diagram algorithm (I think) where split
+        it into four quadrants, find the best one, and continue spitting it. Basically a sampling algo
+         */
+        MapLocation centeredLocation = rc.getLocation();
+
+        float stride_length = RobotStats.strideLength(rc.getType())/2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
+        Direction travel = Direction.getNorth();
+        double mostRelaxedClosestFitDistance = Double.MIN_VALUE;
+        // TODO: make staying put acceptable?
+        // expend 1k bytecode max on gradient search
+        final int currentBytecodes = Clock.getBytecodeNum();
+        do{
+            centeredLocation.add(Direction.getNorth(), stride_length);
+            double smallestDistance = Double.MAX_VALUE; // basically want to find smallest distance in the group (closest call) and then get the largest distance from there. TODO: Average in the future instead of shortest?
+            for(BulletInfo bullet : bullets){
+                double distance = cost(centeredLocation, bullet);
+                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                if(smallestDistance > distance){
+                    smallestDistance = distance;
+                }
+            }
+            mostRelaxedClosestFitDistance = smallestDistance;
+
+            centeredLocation.add(Direction.getEast(), stride_length);
+            smallestDistance = Double.MAX_VALUE;
+            for(BulletInfo bullet : bullets){
+                double distance = cost(centeredLocation, bullet);
+                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                if(smallestDistance > distance){
+                    smallestDistance = distance;
+                }
+            }
+            if(mostRelaxedClosestFitDistance < smallestDistance){
+                mostRelaxedClosestFitDistance = smallestDistance;
+                travel = Direction.getEast();
+            }
+
+            centeredLocation.add(Direction.getSouth(), stride_length);
+            smallestDistance = Double.MAX_VALUE;
+            for(BulletInfo bullet : bullets){
+                double distance = cost(centeredLocation, bullet);
+                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                if(smallestDistance > distance){
+                    smallestDistance = distance;
+                }
+            }
+            if(mostRelaxedClosestFitDistance < smallestDistance){
+                mostRelaxedClosestFitDistance = smallestDistance;
+                travel = Direction.getSouth();
+            }
+
+            centeredLocation.add(Direction.getWest(), stride_length);
+            smallestDistance = Double.MAX_VALUE;
+            for(BulletInfo bullet : bullets){
+                double distance = cost(centeredLocation, bullet);
+                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                if(smallestDistance > distance){
+                    smallestDistance = distance;
+                }
+            }
+            if(mostRelaxedClosestFitDistance < smallestDistance){
+                mostRelaxedClosestFitDistance = smallestDistance;
+                travel = Direction.getWest();
+            }
+
+            // make "movement" and halve step size
+            centeredLocation = centeredLocation.add(travel, stride_length);
+            stride_length /= 2.0f;
+
+        }while(Clock.getBytecodeNum() - currentBytecodes < 1000);
+
+        // finally make movement
+        try {
+            rc.move(centeredLocation);
+        } catch (GameActionException e) {
+            System.err.println("Invalid move!");
+            e.printStackTrace();
+        }
+
+    }
+
+    static double cost(MapLocation centeredLocation, BulletInfo bullet) {
+        final MapLocation bulletLocation = bullet.getLocation();
+        // a = -1, b = -slope, c =
+        final double b = Math.tan(bullet.dir.radians) * -1.0;
+        final double c = (b * -1.0) * centeredLocation.y + centeredLocation.x;
+        final double asquaredbsquared = b*b; // -1s cancel out
+        // first, find the closest x will get to the robot's location.
+        // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line and http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+        final double inner = b * centeredLocation.x + centeredLocation.y;
+        /* Don't need these for now:
+        double closestX = (b * inner + c) /
+                asquaredbsquared;
+        double closestY = (inner - b*c) /
+                asquaredbsquared; // can reuse inner because a is merely negation
+                */
+        double distance =  Math.abs(-1 *centeredLocation.x + b*centeredLocation.y + c) /
+                                Math.sqrt(asquaredbsquared);
+        double cost = bullet.speed/distance; // if close and fast, is huge, if far and slow, is low
+        return cost;
     }
 
     static void updateFromInbox() {
@@ -269,7 +367,7 @@ public strictfp class RobotPlayer {
     /**
      * Attempts to move in a given direction, while avoiding small obstacles directly in the path.
      *
-     * @param dir The intended direction of movement
+     * @param dir The intended direction of strideLength
      * @return true if a move was performed
      * @throws GameActionException
      */
@@ -280,7 +378,7 @@ public strictfp class RobotPlayer {
     /**
      * Attempts to move in a given direction, while avoiding small obstacles direction in the path.
      *
-     * @param dir The intended direction of movement
+     * @param dir The intended direction of strideLength
      * @param degreeOffset Spacing between checked directions (degrees)
      * @param checksPerSide Number of extra directions checked on each side, if intended direction was unavailable
      * @return true if a move was performed

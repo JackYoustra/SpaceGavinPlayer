@@ -1,7 +1,6 @@
 package spacegavinplayer;
 
 import battlecode.common.RobotInfo;
-import battlecode.common.RobotType;
 
 /**
  * Created by jack on 1/11/2017.
@@ -15,6 +14,6 @@ public class SpottedRobot extends SpottedItem{ // different class for spotted bu
     }
 
     float getPossibleDistanceRadius(int currentTurn){
-        return (currentTurn-turnSpotted) * RobotStats.movement(spottedInformation.type);
+        return (currentTurn-turnSpotted) * RobotStats.strideLength(spottedInformation.type);
     }
 }

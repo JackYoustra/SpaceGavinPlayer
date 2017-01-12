@@ -6,7 +6,7 @@ import battlecode.common.RobotType;
  * Created by jack on 1/11/2017.
  */
 public class RobotStats {
-    static float movement(RobotType type){
+    static float strideLength(RobotType type){
         switch (type){
             case ARCHON:
                 return 1;

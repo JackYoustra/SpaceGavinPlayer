@@ -6,12 +6,11 @@ import battlecode.common.RobotType;
 /**
  * Created by jack on 1/11/2017.
  */
-public class SpottedRobot { // different class for spotted bullets
-    public final int turnSpotted;
+public class SpottedRobot extends SpottedItem{ // different class for spotted bullets
     public final RobotInfo spottedInformation;
 
     public SpottedRobot(int turnSpotted, RobotInfo spottedInformation) {
-        this.turnSpotted = turnSpotted;
+        super(turnSpotted);
         this.spottedInformation = spottedInformation;
     }
 

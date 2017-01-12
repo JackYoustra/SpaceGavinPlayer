@@ -1,6 +1,8 @@
 package spacegavinplayer;
 import battlecode.common.*;
 
+import java.util.ArrayList;
+
 public strictfp class RobotPlayer {
     static RobotController rc;
     static ExpectiArena arena = new ExpectiArena();
@@ -40,6 +42,42 @@ public strictfp class RobotPlayer {
 	}
 
     static void runCommon(){
+        // read from message cache
+        MessageReader.updateInbox(rc);
+
+
+        // sensing code
+        RobotInfo[] robots = rc.senseNearbyRobots(); // 100 bytecode
+        for(RobotInfo robot : robots){
+            SpottedRobot srobot = new SpottedRobot(rc.getRoundNum(), robot);
+            if(!arena.isUpdated(srobot, rc.getRoundNum())) {
+                // see if already checked
+                arena.updateRobot(srobot);
+            }
+        }
+        BulletInfo[] bullets = rc.senseNearbyBullets(); // 100 bytecode
+        for(BulletInfo bullet : bullets){
+            SpottedBullet sbullet = new SpottedBullet(rc.getRoundNum(), bullet);
+            if(!arena.isUpdated(sbullet, rc.getRoundNum())) {
+                // see if already checked
+                arena.updateBullet(sbullet);
+
+            }
+        }
+
+        TreeInfo[] trees = rc.senseNearbyTrees(); // 100 bytecode
+        for(TreeInfo tree : trees){
+            SpottedTree stree = new SpottedTree(rc.getRoundNum(), tree);
+            if(!arena.isUpdated(stree, rc.getRoundNum())) {
+                // see if already checked
+                arena.updateTree(stree);
+            }
+        }
+
+        // transmit - new enemies, trees
+        // check for versioning
+
+
 
     }
 

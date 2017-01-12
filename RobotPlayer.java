@@ -2,6 +2,8 @@ package spacegavinplayer;
 import battlecode.common.*;
 
 public strictfp class RobotPlayer {
+    public static final int MAX_DODGE_BYTECODE = 1000;
+    public static final double COST_CUTOFF = 0.01;
     static RobotController rc;
     static ExpectiArena arena = new ExpectiArena();
     /**
@@ -54,7 +56,8 @@ public strictfp class RobotPlayer {
         it into four quadrants, find the best one, and continue spitting it. Basically a sampling algo
          */
         MapLocation centeredLocation = rc.getLocation();
-
+        BulletInfo[] relevantBullets = new BulletInfo[bullets.length];
+        int relevantBulletsIndex = 0;
         float stride_length = RobotStats.strideLength(rc.getType())/2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
         Direction travel = Direction.getNorth();
         double mostRelaxedClosestFitDistance = Double.MIN_VALUE;
@@ -65,7 +68,11 @@ public strictfp class RobotPlayer {
             centeredLocation.add(Direction.getNorth(), stride_length);
             double smallestDistance = Double.MAX_VALUE; // basically want to find smallest distance in the group (closest call) and then get the largest distance from there. TODO: Average in the future instead of shortest?
             for(BulletInfo bullet : bullets){
+                if(bullet == null) break;
                 double distance = cost(centeredLocation, bullet);
+                if(distance > COST_CUTOFF){
+                    relevantBullets[relevantBulletsIndex++] = bullet;
+                }
                 // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                 if(smallestDistance > distance){
                     smallestDistance = distance;
@@ -76,7 +83,11 @@ public strictfp class RobotPlayer {
             centeredLocation.add(Direction.getEast(), stride_length);
             smallestDistance = Double.MAX_VALUE;
             for(BulletInfo bullet : bullets){
+                if(bullet == null) break;
                 double distance = cost(centeredLocation, bullet);
+                if(distance > COST_CUTOFF){
+                    relevantBullets[relevantBulletsIndex++] = bullet;
+                }
                 // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                 if(smallestDistance > distance){
                     smallestDistance = distance;
@@ -90,7 +101,11 @@ public strictfp class RobotPlayer {
             centeredLocation.add(Direction.getSouth(), stride_length);
             smallestDistance = Double.MAX_VALUE;
             for(BulletInfo bullet : bullets){
+                if(bullet == null) break;
                 double distance = cost(centeredLocation, bullet);
+                if(distance > COST_CUTOFF){
+                    relevantBullets[relevantBulletsIndex++] = bullet;
+                }
                 // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                 if(smallestDistance > distance){
                     smallestDistance = distance;
@@ -104,7 +119,11 @@ public strictfp class RobotPlayer {
             centeredLocation.add(Direction.getWest(), stride_length);
             smallestDistance = Double.MAX_VALUE;
             for(BulletInfo bullet : bullets){
+                if(bullet == null) break;
                 double distance = cost(centeredLocation, bullet);
+                if(distance > COST_CUTOFF){
+                    relevantBullets[relevantBulletsIndex++] = bullet;
+                }
                 // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                 if(smallestDistance > distance){
                     smallestDistance = distance;
@@ -117,9 +136,12 @@ public strictfp class RobotPlayer {
 
             // make "movement" and halve step size
             centeredLocation = centeredLocation.add(travel, stride_length);
+            // reduce bullets
+            bullets = relevantBullets;
+            relevantBulletsIndex = 0;
             stride_length /= 2.0f;
 
-        }while(Clock.getBytecodeNum() - currentBytecodes < 1000);
+        }while(Clock.getBytecodeNum() - currentBytecodes < MAX_DODGE_BYTECODE);
 
         // finally make movement
         try {

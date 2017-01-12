@@ -42,8 +42,16 @@ public strictfp class RobotPlayer {
 	}
 
     static void runCommon(){
-        // read from message cache
-        MessageReader.updateInbox(rc);
+        // read from message cache & update map
+        MessageReader.updateInbox();
+        for(SpottedItem item : MessageReader.Inbox.items){
+            if(item instanceof SpottedRobot){
+                arena.updateRobot((SpottedRobot) item);
+            }
+            else if(item instanceof SpottedTree){
+                arena.updateTree((SpottedTree) item);
+            }
+        }
 
 
         // sensing code
@@ -67,7 +75,8 @@ public strictfp class RobotPlayer {
 
         TreeInfo[] trees = rc.senseNearbyTrees(); // 100 bytecode
         for(TreeInfo tree : trees){
-            SpottedTree stree = new SpottedTree(rc.getRoundNum(), tree);
+            boolean containsRobot = (tree.containedRobot != null);
+            SpottedTree stree = new SpottedTree(rc.getRoundNum(), tree, containsRobot);
             if(!arena.isUpdated(stree, rc.getRoundNum())) {
                 // see if already checked
                 arena.updateTree(stree);

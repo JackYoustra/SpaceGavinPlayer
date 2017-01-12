@@ -7,9 +7,11 @@ import battlecode.common.TreeInfo;
  */
 public class SpottedTree extends SpottedItem{
     public final TreeInfo spottedInformation;
+    public final boolean hasRobot;
 
-    public SpottedTree(int turnSpotted, TreeInfo spottedInformation) {
+    public SpottedTree(int turnSpotted, TreeInfo spottedInformation, boolean hasRobot) {
         super(turnSpotted);
         this.spottedInformation = spottedInformation;
+        this.hasRobot = hasRobot;
     }
 }

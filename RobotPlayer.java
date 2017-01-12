@@ -43,6 +43,18 @@ public strictfp class RobotPlayer {
 
     static void runCommon(){
         // read from message cache & update map
+        updateFromInbox();
+        sense();
+        dodge();
+        // transmit - new enemies, trees
+    }
+
+    static void dodge(){
+        BulletInfo[] bullets = rc.senseNearbyBullets(); // get bullets to dodge
+        
+    }
+
+    static void updateFromInbox() {
         MessageReader.updateInbox();
         for(SpottedItem item : MessageReader.Inbox.items){
             if(item instanceof SpottedRobot){
@@ -52,8 +64,9 @@ public strictfp class RobotPlayer {
                 arena.updateTree((SpottedTree) item);
             }
         }
+    }
 
-
+    static void sense() {
         // sensing code
         RobotInfo[] robots = rc.senseNearbyRobots(); // 100 bytecode
         for(RobotInfo robot : robots){
@@ -63,6 +76,7 @@ public strictfp class RobotPlayer {
                 arena.updateRobot(srobot);
             }
         }
+        /*
         BulletInfo[] bullets = rc.senseNearbyBullets(); // 100 bytecode
         for(BulletInfo bullet : bullets){
             SpottedBullet sbullet = new SpottedBullet(rc.getRoundNum(), bullet);
@@ -72,6 +86,7 @@ public strictfp class RobotPlayer {
 
             }
         }
+        */
 
         TreeInfo[] trees = rc.senseNearbyTrees(); // 100 bytecode
         for(TreeInfo tree : trees){
@@ -82,12 +97,6 @@ public strictfp class RobotPlayer {
                 arena.updateTree(stree);
             }
         }
-
-        // transmit - new enemies, trees
-        // check for versioning
-
-
-
     }
 
     static void runTank() {

@@ -9,7 +9,7 @@ import java.util.Map;
  */
 public class ExpectiArena {
     private Map<Integer, SpottedRobot> spottedRobots = new HashMap<>(); // UUID of robot : robot
-    private Map<Integer, SpottedBullet> spottedBullets = new HashMap<>(); // UUID of bullet : bullet
+    //private Map<Integer, SpottedBullet> spottedBullets = new HashMap<>(); // UUID of bullet : bullet
     private Map<Integer, SpottedTree> spottedTrees = new HashMap<>(); // UUID of tree : tree
 
     // TOOD: Allow for destruction of objects
@@ -22,7 +22,7 @@ public class ExpectiArena {
         final Collection<SpottedRobot> values = spottedRobots.values();
         return values.toArray(new SpottedRobot[values.size()]);
     }
-
+/*
     public void updateBullet(SpottedBullet bullet){
         spottedBullets.put(bullet.spottedInformation.ID, bullet);
     }
@@ -31,7 +31,7 @@ public class ExpectiArena {
         final Collection<SpottedBullet> values = spottedBullets.values();
         return values.toArray(new SpottedBullet[values.size()]);
     }
-
+*/
     public void updateTree(SpottedTree tree){
         spottedTrees.put(tree.spottedInformation.ID, tree);
     }
@@ -49,7 +49,7 @@ public class ExpectiArena {
         }
         return false;
     }
-
+/*
     public boolean isUpdated(SpottedBullet sbullet, int turn) {
         final SpottedBullet spottedBullet = spottedBullets.get(sbullet);
         if(spottedBullet != null && spottedBullet.turnSpotted == turn){
@@ -57,7 +57,7 @@ public class ExpectiArena {
         }
         return false;
     }
-
+*/
     public boolean isUpdated(SpottedTree stree, int turn) {
         final SpottedTree spottedTree = spottedTrees.get(stree);
         if(spottedTree != null && spottedTree.turnSpotted == turn){

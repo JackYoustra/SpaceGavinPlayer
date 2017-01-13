@@ -19,6 +19,7 @@ public strictfp class RobotPlayer {
 
         // Here, we've separated the controls into a different method for each RobotType.
         // You can add the missing ones or rewrite this into your own control structure.
+        try {
         switch (rc.getType()) {
             case ARCHON:
                 runArchon();
@@ -39,9 +40,14 @@ public strictfp class RobotPlayer {
                 runScout();
                 break;
         }
+        }catch (Exception e){
+            System.err.println("Unhandled exception!!!");
+            e.printStackTrace();
+        }
 	}
 
     static void runCommon(){
+        System.out.println("in common");
         // read from message cache & update map
         updateFromInbox();
         System.out.println("Post-inbox, cycles left: " + Clock.getBytecodesLeft());
@@ -52,15 +58,16 @@ public strictfp class RobotPlayer {
         // transmit - new enemies, trees
     }
 
+    // returns whether or not dodged
     static void dodge(){
         BulletInfo[] bullets = rc.senseNearbyBullets(); // get bullets to dodge
-        // TODO: rest if no bullets
+        if(bullets.length == 0) return; // rest if none
         /* refined quadrant check. Voronay diagram algorithm (I think) where split
         it into four quadrants, find the best one, and continue spitting it. Basically a sampling algo
          */
-        MapLocation centeredLocation = rc.getLocation();
+        final MapLocation playerLocation = rc.getLocation();
+        MapLocation centeredLocation = new MapLocation(playerLocation.x, playerLocation.y);
         BulletInfo[] relevantBullets = new BulletInfo[bullets.length];
-        int relevantBulletsIndex = 0;
         float stride_length = RobotStats.strideLength(rc.getType())/2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
         Direction travel = Direction.getNorth();
         double mostRelaxedClosestFitDistance = Double.MIN_VALUE;
@@ -68,7 +75,10 @@ public strictfp class RobotPlayer {
         // TODO: make staying put acceptable?
         // expend 1k bytecode max on gradient search
         final int currentBytecodes = Clock.getBytecodeNum();
+        int relevantBulletsIndex = 0;
         do{
+            relevantBulletsIndex = 0;
+            // if no bullets, do nothing
             MapLocation testLocation = centeredLocation.add(Direction.getNorth(), stride_length);
             if(rc.canMove(testLocation)) {
                 for (BulletInfo bullet : bullets) {
@@ -143,25 +153,31 @@ public strictfp class RobotPlayer {
                 }
             }
             if(mostRelaxedClosestFitDistance != Double.MIN_VALUE){
+                System.out.println("inside");
                 // if not, none of the places could be moved towards, so stay in place and just reduce stride
                 // make "movement" and halve step size
                 centeredLocation = centeredLocation.add(travel, stride_length); // final choice - but could also stick with the best testLocation
                 // reduce bullets
                 bullets = relevantBullets;
-                relevantBulletsIndex = 0;
+                // relevantBulletsIndex = 0; set above so use in conditional
             }
             stride_length /= 2.0f;
 
-        }while(Clock.getBytecodeNum() - currentBytecodes < MAX_DODGE_BYTECODE);
-
-        // finally make movement
-        try {
-            rc.move(centeredLocation);
-        } catch (GameActionException e) {
-            System.err.println("Invalid move!");
-            e.printStackTrace();
+        }while(relevantBulletsIndex > 0 && Clock.getBytecodeNum() - currentBytecodes < MAX_DODGE_BYTECODE);
+        System.out.println(centeredLocation.x + ", " + centeredLocation.y);
+        System.out.println(playerLocation.x + ", " + playerLocation.y);
+        if(centeredLocation.x == playerLocation.x && centeredLocation.y == playerLocation.y) {
+            // no movement expended dodging if not needed
         }
-
+        else{
+            // finally make movement
+            try {
+                rc.move(centeredLocation);
+            } catch (GameActionException e) {
+                System.err.println("Invalid move!");
+                e.printStackTrace();
+            }
+        }
     }
 
     static double cost(MapLocation centeredLocation, BulletInfo bullet) {
@@ -254,10 +270,10 @@ public strictfp class RobotPlayer {
                 if (rc.canHireGardener(dir) && Math.random() < .01) {
                     rc.hireGardener(dir);
                 }
-
-                // Move randomly
-                tryMove(randomDirection());
-
+                if(!rc.hasMoved()) {
+                    // Move randomly
+                    tryMove(randomDirection());
+                }
                 // Broadcast archon's location for other robots on the team to know
                 MapLocation myLocation = rc.getLocation();
                 rc.broadcast(0,(int)myLocation.x);
@@ -297,9 +313,10 @@ public strictfp class RobotPlayer {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
                 }
 
-                // Move randomly
-                tryMove(randomDirection());
-
+                if(!rc.hasMoved()) {
+                    // Move randomly
+                    tryMove(randomDirection());
+                }
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 
@@ -333,8 +350,10 @@ public strictfp class RobotPlayer {
                     }
                 }
 
-                // Move randomly
-                tryMove(randomDirection());
+                if(!rc.hasMoved()) {
+                    // Move randomly
+                    tryMove(randomDirection());
+                }
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();

@@ -97,7 +97,7 @@ public class MessageReader {
             }
             // read meta slot
             int metacode = 0;
-            metacode = rc.readBroadcast(GameConstants.BROADCAST_MAX_CHANNELS);
+            metacode = rc.readBroadcast(GameConstants.BROADCAST_MAX_CHANNELS-1);
             // update inbox
             Inbox.aggressionslider = (metacode>>0)&0xFF; // first 8 bits
             Inbox.vpslider = (metacode>>8)&0xFF; // bits 8-16

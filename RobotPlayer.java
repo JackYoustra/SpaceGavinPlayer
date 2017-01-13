@@ -44,8 +44,11 @@ public strictfp class RobotPlayer {
     static void runCommon(){
         // read from message cache & update map
         updateFromInbox();
+        System.out.println("Post-inbox, cycles left: " + Clock.getBytecodesLeft());
         sense();
+        System.out.println("Post-sense, cycles left: " + Clock.getBytecodesLeft());
         dodge();
+        System.out.println("Post-dodge, cycles left: " + Clock.getBytecodesLeft());
         // transmit - new enemies, trees
     }
 
@@ -61,84 +64,92 @@ public strictfp class RobotPlayer {
         float stride_length = RobotStats.strideLength(rc.getType())/2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
         Direction travel = Direction.getNorth();
         double mostRelaxedClosestFitDistance = Double.MIN_VALUE;
+        double smallestDistance = Double.MAX_VALUE; // basically want to find smallest distance in the group (closest call) and then get the largest distance from there. TODO: Average in the future instead of shortest?
         // TODO: make staying put acceptable?
         // expend 1k bytecode max on gradient search
         final int currentBytecodes = Clock.getBytecodeNum();
         do{
-            centeredLocation.add(Direction.getNorth(), stride_length);
-            double smallestDistance = Double.MAX_VALUE; // basically want to find smallest distance in the group (closest call) and then get the largest distance from there. TODO: Average in the future instead of shortest?
-            for(BulletInfo bullet : bullets){
-                if(bullet == null) break;
-                double distance = cost(centeredLocation, bullet);
-                if(distance > COST_CUTOFF){
-                    relevantBullets[relevantBulletsIndex++] = bullet;
+            MapLocation testLocation = centeredLocation.add(Direction.getNorth(), stride_length);
+            if(rc.canMove(testLocation)) {
+                for (BulletInfo bullet : bullets) {
+                    if (bullet == null) break;
+                    double distance = cost(testLocation, bullet);
+                    if (distance > COST_CUTOFF) {
+                        relevantBullets[relevantBulletsIndex++] = bullet;
+                    }
+                    // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                    if (smallestDistance > distance) {
+                        smallestDistance = distance;
+                    }
                 }
-                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
-                if(smallestDistance > distance){
-                    smallestDistance = distance;
-                }
-            }
-            mostRelaxedClosestFitDistance = smallestDistance;
-
-            centeredLocation.add(Direction.getEast(), stride_length);
-            smallestDistance = Double.MAX_VALUE;
-            for(BulletInfo bullet : bullets){
-                if(bullet == null) break;
-                double distance = cost(centeredLocation, bullet);
-                if(distance > COST_CUTOFF){
-                    relevantBullets[relevantBulletsIndex++] = bullet;
-                }
-                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
-                if(smallestDistance > distance){
-                    smallestDistance = distance;
-                }
-            }
-            if(mostRelaxedClosestFitDistance < smallestDistance){
                 mostRelaxedClosestFitDistance = smallestDistance;
-                travel = Direction.getEast();
+            }
+            testLocation = centeredLocation.add(Direction.getEast(), stride_length);
+            if(rc.canMove(testLocation)) {
+                smallestDistance = Double.MAX_VALUE;
+                for (BulletInfo bullet : bullets) {
+                    if (bullet == null) break;
+                    double distance = cost(testLocation, bullet);
+                    if (distance > COST_CUTOFF) {
+                        relevantBullets[relevantBulletsIndex++] = bullet;
+                    }
+                    // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                    if (smallestDistance > distance) {
+                        smallestDistance = distance;
+                    }
+                }
+                if (mostRelaxedClosestFitDistance < smallestDistance) {
+                    mostRelaxedClosestFitDistance = smallestDistance;
+                    travel = Direction.getEast();
+                }
+            }
+            testLocation = centeredLocation.add(Direction.getSouth(), stride_length);
+            if(rc.canMove(testLocation)) {
+                smallestDistance = Double.MAX_VALUE;
+                for (BulletInfo bullet : bullets) {
+                    if (bullet == null) break;
+                    double distance = cost(testLocation, bullet);
+                    if (distance > COST_CUTOFF) {
+                        relevantBullets[relevantBulletsIndex++] = bullet;
+                    }
+                    // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                    if (smallestDistance > distance) {
+                        smallestDistance = distance;
+                    }
+                }
+                if (mostRelaxedClosestFitDistance < smallestDistance) {
+                    mostRelaxedClosestFitDistance = smallestDistance;
+                    travel = Direction.getSouth();
+                }
             }
 
-            centeredLocation.add(Direction.getSouth(), stride_length);
-            smallestDistance = Double.MAX_VALUE;
-            for(BulletInfo bullet : bullets){
-                if(bullet == null) break;
-                double distance = cost(centeredLocation, bullet);
-                if(distance > COST_CUTOFF){
-                    relevantBullets[relevantBulletsIndex++] = bullet;
+            testLocation = centeredLocation.add(Direction.getWest(), stride_length);
+            if(rc.canMove(testLocation)) {
+                smallestDistance = Double.MAX_VALUE;
+                for (BulletInfo bullet : bullets) {
+                    if (bullet == null) break;
+                    double distance = cost(testLocation, bullet);
+                    if (distance > COST_CUTOFF) {
+                        relevantBullets[relevantBulletsIndex++] = bullet;
+                    }
+                    // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
+                    if (smallestDistance > distance) {
+                        smallestDistance = distance;
+                    }
                 }
-                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
-                if(smallestDistance > distance){
-                    smallestDistance = distance;
-                }
-            }
-            if(mostRelaxedClosestFitDistance < smallestDistance){
-                mostRelaxedClosestFitDistance = smallestDistance;
-                travel = Direction.getSouth();
-            }
-
-            centeredLocation.add(Direction.getWest(), stride_length);
-            smallestDistance = Double.MAX_VALUE;
-            for(BulletInfo bullet : bullets){
-                if(bullet == null) break;
-                double distance = cost(centeredLocation, bullet);
-                if(distance > COST_CUTOFF){
-                    relevantBullets[relevantBulletsIndex++] = bullet;
-                }
-                // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
-                if(smallestDistance > distance){
-                    smallestDistance = distance;
+                if (mostRelaxedClosestFitDistance < smallestDistance) {
+                    mostRelaxedClosestFitDistance = smallestDistance;
+                    travel = Direction.getWest();
                 }
             }
-            if(mostRelaxedClosestFitDistance < smallestDistance){
-                mostRelaxedClosestFitDistance = smallestDistance;
-                travel = Direction.getWest();
+            if(mostRelaxedClosestFitDistance != Double.MIN_VALUE){
+                // if not, none of the places could be moved towards, so stay in place and just reduce stride
+                // make "movement" and halve step size
+                centeredLocation = centeredLocation.add(travel, stride_length); // final choice - but could also stick with the best testLocation
+                // reduce bullets
+                bullets = relevantBullets;
+                relevantBulletsIndex = 0;
             }
-
-            // make "movement" and halve step size
-            centeredLocation = centeredLocation.add(travel, stride_length);
-            // reduce bullets
-            bullets = relevantBullets;
-            relevantBulletsIndex = 0;
             stride_length /= 2.0f;
 
         }while(Clock.getBytecodeNum() - currentBytecodes < MAX_DODGE_BYTECODE);
@@ -461,7 +472,7 @@ public strictfp class RobotPlayer {
             return false;
         }
 
-        // distToRobot is our hypotenuse, theta is our angle, and we want to know this length of the opposite leg.
+        // distToRobot is our hypotenuse, theta is  our angle, and we want to know this length of the opposite leg.
         // This is the distance of a line that goes from myLocation and intersects perpendicularly with propagationDirection.
         // This corresponds to the smallest radius circle centered at our location that would intersect with the
         // line that is the path of the bullet.

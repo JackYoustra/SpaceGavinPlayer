@@ -2,7 +2,7 @@ package spacegavinplayer;
 import battlecode.common.*;
 
 public strictfp class RobotPlayer {
-    public static final int MAX_DODGE_BYTECODE = 1000;
+    public static final int MAX_DODGE_BYTECODE = 5000;
     public static final double COST_CUTOFF = 0.01;
     static RobotController rc;
     static ExpectiArena arena = new ExpectiArena();
@@ -60,23 +60,42 @@ public strictfp class RobotPlayer {
 
     // returns whether or not dodged
     static void dodge(){
-        BulletInfo[] bullets = rc.senseNearbyBullets(); // get bullets to dodge
-        if(bullets.length == 0) return; // rest if none
+        BulletInfo[] scannedbullets = rc.senseNearbyBullets(); // get bullets to dodge
+        if(scannedbullets.length == 0) return; // rest if none
         /* refined quadrant check. Voronay diagram algorithm (I think) where split
         it into four quadrants, find the best one, and continue spitting it. Basically a sampling algo
          */
+
         final MapLocation playerLocation = rc.getLocation();
+        BulletInfo[] bullets = new BulletInfo[scannedbullets.length];
+        // prune bullets heading away from robot, go through first
+        int counter = 0;
+        for (int i = scannedbullets.length; --i >= 0;) {
+            final BulletInfo info = scannedbullets[i];
+            final MapLocation bulletLocation = info.getLocation();
+            Direction directionToRobot = bulletLocation.directionTo(playerLocation);
+            float distToRobot = bulletLocation.distanceTo(playerLocation);
+            float theta = info.dir.radiansBetween(directionToRobot);
+            // If theta > 90 degrees, then the bullet is traveling away from us and we can break early
+            if (Math.abs(theta) > Math.PI/2) {
+            }
+            else{
+                bullets[counter++] = info;
+            }
+        }
+        System.out.println("Sensed: " + scannedbullets.length + ", Incoming: " + counter);
+
         MapLocation centeredLocation = new MapLocation(playerLocation.x, playerLocation.y);
         BulletInfo[] relevantBullets = new BulletInfo[bullets.length];
         float stride_length = RobotStats.strideLength(rc.getType())/2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
         Direction travel = Direction.getNorth();
         double mostRelaxedClosestFitDistance = Double.MIN_VALUE;
         double smallestDistance = Double.MAX_VALUE; // basically want to find smallest distance in the group (closest call) and then get the largest distance from there. TODO: Average in the future instead of shortest?
-        // TODO: make staying put acceptable?
         // expend 1k bytecode max on gradient search
         final int currentBytecodes = Clock.getBytecodeNum();
         int relevantBulletsIndex = 0;
         do{
+            boolean relevantInserted = false; // retention for relevancy (not a wild miss) only needs to happen once in following
             relevantBulletsIndex = 0;
             // if no bullets, do nothing
             MapLocation testLocation = centeredLocation.add(Direction.getNorth(), stride_length);
@@ -86,6 +105,7 @@ public strictfp class RobotPlayer {
                     double distance = cost(testLocation, bullet);
                     if (distance > COST_CUTOFF) {
                         relevantBullets[relevantBulletsIndex++] = bullet;
+                        relevantInserted = true;
                     }
                     // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                     if (smallestDistance > distance) {
@@ -93,6 +113,7 @@ public strictfp class RobotPlayer {
                     }
                 }
                 mostRelaxedClosestFitDistance = smallestDistance;
+                System.out.println("North most relaxed: " + mostRelaxedClosestFitDistance);
             }
             testLocation = centeredLocation.add(Direction.getEast(), stride_length);
             if(rc.canMove(testLocation)) {
@@ -100,14 +121,16 @@ public strictfp class RobotPlayer {
                 for (BulletInfo bullet : bullets) {
                     if (bullet == null) break;
                     double distance = cost(testLocation, bullet);
-                    if (distance > COST_CUTOFF) {
+                    if (distance > COST_CUTOFF && !relevantInserted) {
                         relevantBullets[relevantBulletsIndex++] = bullet;
+                        relevantInserted = true;
                     }
                     // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                     if (smallestDistance > distance) {
                         smallestDistance = distance;
                     }
                 }
+                System.out.println("East most relaxed: " + smallestDistance);
                 if (mostRelaxedClosestFitDistance < smallestDistance) {
                     mostRelaxedClosestFitDistance = smallestDistance;
                     travel = Direction.getEast();
@@ -119,14 +142,16 @@ public strictfp class RobotPlayer {
                 for (BulletInfo bullet : bullets) {
                     if (bullet == null) break;
                     double distance = cost(testLocation, bullet);
-                    if (distance > COST_CUTOFF) {
+                    if (distance > COST_CUTOFF && !relevantInserted) {
                         relevantBullets[relevantBulletsIndex++] = bullet;
+                        relevantInserted = true;
                     }
                     // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                     if (smallestDistance > distance) {
                         smallestDistance = distance;
                     }
                 }
+                System.out.println("South most relaxed: " + smallestDistance);
                 if (mostRelaxedClosestFitDistance < smallestDistance) {
                     mostRelaxedClosestFitDistance = smallestDistance;
                     travel = Direction.getSouth();
@@ -139,26 +164,27 @@ public strictfp class RobotPlayer {
                 for (BulletInfo bullet : bullets) {
                     if (bullet == null) break;
                     double distance = cost(testLocation, bullet);
-                    if (distance > COST_CUTOFF) {
+                    if (distance > COST_CUTOFF && !relevantInserted) {
                         relevantBullets[relevantBulletsIndex++] = bullet;
+                        relevantInserted = true;
                     }
                     // consider using fast inverse square root for distance: http://stackoverflow.com/questions/11513344/how-to-implement-the-fast-inverse-square-root-in-java
                     if (smallestDistance > distance) {
                         smallestDistance = distance;
                     }
                 }
+                System.out.println("West most relaxed: " + smallestDistance);
                 if (mostRelaxedClosestFitDistance < smallestDistance) {
                     mostRelaxedClosestFitDistance = smallestDistance;
                     travel = Direction.getWest();
                 }
             }
             if(mostRelaxedClosestFitDistance != Double.MIN_VALUE){
-                System.out.println("inside");
                 // if not, none of the places could be moved towards, so stay in place and just reduce stride
                 // make "movement" and halve step size
                 centeredLocation = centeredLocation.add(travel, stride_length); // final choice - but could also stick with the best testLocation
                 // reduce bullets
-                bullets = relevantBullets;
+                System.arraycopy(relevantBullets, 0, bullets, 0, relevantBullets.length); // need to overwrite values with nulls too
                 // relevantBulletsIndex = 0; set above so use in conditional
             }
             stride_length /= 2.0f;
@@ -182,13 +208,13 @@ public strictfp class RobotPlayer {
 
     static double cost(MapLocation centeredLocation, BulletInfo bullet) {
         final MapLocation bulletLocation = bullet.getLocation();
-        // a = -1, b = -slope, c =
+        // a = -1, b = -slope
         final double b = Math.tan(bullet.dir.radians) * -1.0;
-        final double c = (b * -1.0) * centeredLocation.y + centeredLocation.x;
+        final double c = (b * -1.0) * bulletLocation.y + bulletLocation.x;
         final double asquaredbsquared = b*b; // -1s cancel out
         // first, find the closest x will get to the robot's location.
         // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line and http://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
-        final double inner = b * centeredLocation.x + centeredLocation.y;
+        final double inner = b * bulletLocation.x + bulletLocation.y;
         /* Don't need these for now:
         double closestX = (b * inner + c) /
                 asquaredbsquared;
@@ -197,7 +223,8 @@ public strictfp class RobotPlayer {
                 */
         double distance =  Math.abs(-1 *centeredLocation.x + b*centeredLocation.y + c) /
                                 Math.sqrt(asquaredbsquared);
-        double cost = bullet.speed/distance; // if close and fast, is huge, if far and slow, is low
+        //double cost = bullet.speed/distance; // if close and fast, is huge, if far and slow, is low
+        double cost = distance / bullet.speed; // want inverse of cost for now
         return cost;
     }
 

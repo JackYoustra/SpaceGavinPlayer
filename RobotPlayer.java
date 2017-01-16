@@ -6,6 +6,9 @@ public strictfp class RobotPlayer {
     public static final double COST_CUTOFF = 0.01;
     static RobotController rc;
     static ExpectiArena arena = new ExpectiArena();
+    public static float ROBOT_SPEED;
+    public static float BODY_RADIUS;
+
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
      * If this method returns, the robot dies!
@@ -16,6 +19,8 @@ public strictfp class RobotPlayer {
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
         RobotPlayer.rc = rc;
+        ROBOT_SPEED = rc.getType().strideRadius; // single lookup
+        BODY_RADIUS = rc.getType().bodyRadius;
 
         // Here, we've separated the controls into a different method for each RobotType.
         // You can add the missing ones or rewrite this into your own control structure.
@@ -74,12 +79,11 @@ public strictfp class RobotPlayer {
             final BulletInfo info = scannedbullets[i];
             final MapLocation bulletLocation = info.getLocation();
             Direction directionToRobot = bulletLocation.directionTo(playerLocation);
-            float distToRobot = bulletLocation.distanceTo(playerLocation);
+            //float distToRobot = bulletLocation.distanceTo(playerLocation);
+            final float nextDistance = bulletLocation.add(info.dir, info.speed).distanceTo(playerLocation);
             float theta = info.dir.radiansBetween(directionToRobot);
-            // If theta > 90 degrees, then the bullet is traveling away from us and we can break early
-            if (Math.abs(theta) > Math.PI/2) {
-            }
-            else{
+            // If theta > 90 degrees, then the bullet is traveling away from us and we can break early so long as it's also not in movement footprint (size + move speed). Basically, worst-case can't hit us. The following if is a negation of the case to prevent an empty if and only an else clause thing
+            if (!(Math.abs(theta) > Math.PI/2) || ROBOT_SPEED + BODY_RADIUS > nextDistance) {
                 bullets[counter++] = info;
             }
         }
@@ -87,7 +91,7 @@ public strictfp class RobotPlayer {
 
         MapLocation centeredLocation = new MapLocation(playerLocation.x, playerLocation.y);
         BulletInfo[] relevantBullets = new BulletInfo[bullets.length];
-        float stride_length = RobotStats.strideLength(rc.getType())/2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
+        float stride_length = ROBOT_SPEED / 2.0f; // start at origin and have space to move as far as needed to either side, could start farther away if necessary
         Direction travel = Direction.getNorth();
         double mostRelaxedClosestFitDistance = Double.MIN_VALUE;
         double smallestDistance = Double.MAX_VALUE; // basically want to find smallest distance in the group (closest call) and then get the largest distance from there. TODO: Average in the future instead of shortest?
@@ -224,7 +228,7 @@ public strictfp class RobotPlayer {
         double distance =  Math.abs(-1 *centeredLocation.x + b*centeredLocation.y + c) /
                                 Math.sqrt(asquaredbsquared);
         //double cost = bullet.speed/distance; // if close and fast, is huge, if far and slow, is low
-        double cost = distance / bullet.speed; // want inverse of cost for now
+        double cost = (distance + centeredLocation.distanceSquaredTo(bulletLocation)) / (bullet.speed); // want inverse of cost for now
         return cost;
     }
 
@@ -246,8 +250,10 @@ public strictfp class RobotPlayer {
         for(RobotInfo robot : robots){
             SpottedRobot srobot = new SpottedRobot(rc.getRoundNum(), robot);
             if(!arena.isUpdated(srobot, rc.getRoundNum())) {
-                // see if already checked
+                // if not checked, update internal map
                 arena.updateRobot(srobot);
+                // and broadcast
+                MessageReader.write(srobot);
             }
         }
         /*
@@ -524,6 +530,6 @@ public strictfp class RobotPlayer {
         // line that is the path of the bullet.
         float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
 
-        return (perpendicularDist <= rc.getType().bodyRadius);
+        return (perpendicularDist <= BODY_RADIUS);
     }
 }

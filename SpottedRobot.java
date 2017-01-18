@@ -14,6 +14,11 @@ public class SpottedRobot extends SpottedItem{ // different class for spotted bu
     }
 
     float getPossibleDistanceRadius(int currentTurn){
-        return (currentTurn-turnSpotted) * RobotStats.strideLength(spottedInformation.type);
+        return (currentTurn-turnSpotted) * spottedInformation.type.strideRadius;
+    }
+
+    @Override
+    public String toString() {
+        return "ID: " + spottedInformation.ID + ", Team: " + spottedInformation.team;
     }
 }

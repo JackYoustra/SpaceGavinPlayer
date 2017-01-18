@@ -2,7 +2,7 @@ package spacegavinplayer;
 import battlecode.common.*;
 
 public strictfp class RobotPlayer {
-    public static final int MAX_DODGE_BYTECODE = 5000;
+    public static final int MAX_DODGE_BYTECODE = 4000;
     public static final double COST_CUTOFF = 0.01;
     static RobotController rc;
     static ExpectiArena arena = new ExpectiArena();
@@ -242,6 +242,9 @@ public strictfp class RobotPlayer {
                 arena.updateTree((SpottedTree) item);
             }
         }
+        for(SpottedItem item : arena.getRobots()){
+            System.out.println("I see " + item.toString());
+        }
     }
 
     static void sense() {
@@ -376,6 +379,23 @@ public strictfp class RobotPlayer {
 
                 // If there are some...
                 if (robots.length > 0) {
+                    // detect arkan
+                    boolean found = false;
+                    for(RobotInfo r : robots){
+                        if(r.type == RobotType.ARCHON){
+                            found = true;
+                            final Direction directionToEnemy = rc.getLocation().directionTo(r.location);
+                            if(rc.canFirePentadShot()) {
+                                rc.firePentadShot(directionToEnemy);
+                            }
+                            // move
+                            if(rc.canMove(directionToEnemy)){
+                                rc.move(directionToEnemy);
+                            }
+                            break;
+                        }
+                    }
+
                     // And we have enough bullets, and haven't attacked yet this turn...
                     if (rc.canFireSingleShot()) {
                         // ...Then fire a bullet in the direction of the enemy.
@@ -383,7 +403,7 @@ public strictfp class RobotPlayer {
                     }
                 }
 
-                if(!rc.hasMoved()) {
+                else if (!rc.hasMoved()) {
                     // Move randomly
                     tryMove(randomDirection());
                 }

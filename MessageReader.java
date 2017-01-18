@@ -14,7 +14,7 @@ public class MessageReader {
     first int is header, has timestamp in MS bits (12 with assumption of 3k max rounds), robot type / tree type in LS bits (5 bits total). Bits 6-14 are health
      */
 
-    static int writeLocation = -1; // seek head, start at reading section and end to convert to write head
+    static int writeLocation = 0; // seek head, start at reading section and end to convert to write head
     private static final int ROBOT_TYPE_MASK =      0b00111; //can be 0-5, so 3 bits of info
     private static final int TREE_FLAG =            0b01000;
     private static final int TEAM_A_FLAG =          0b10000;
@@ -32,13 +32,12 @@ public class MessageReader {
         try {
             while(true){
                 // read item
-                int leading_packet = 0;
-                    leading_packet = RobotPlayer.rc.readBroadcast(position);
+                int leading_packet = RobotPlayer.rc.readBroadcast(position);
                 if(leading_packet == 0){
-                    // first round, nothing needed
+                    // nothing in packet
                     return;
                 }
-                if(RobotPlayer.rc.getRoundNum() == (leading_packet >>> 32-12)){ // get most significant 12 bits (bits 20-32)
+                if(RobotPlayer.rc.getRoundNum() == (leading_packet >>> (32-12))){ // get most significant 12 bits (bits 20-32)
                     // "fresh" message, proceed
                     int flattenedX = 0;
                     // read position data, rest of run packet
@@ -58,6 +57,7 @@ public class MessageReader {
                     }
 
                     int id = third_packet&0xFFFF; // first 16 bits
+                    System.out.println("ID: " + id + "; Packet: " + position);
 
                     // get health
                     int health = (leading_packet>>>6)&0xFF; // bits 6-14
@@ -95,12 +95,11 @@ public class MessageReader {
                 }
             }
             // read meta slot
-            int metacode = 0;
-            metacode = RobotPlayer.rc.readBroadcast(GameConstants.BROADCAST_MAX_CHANNELS-1);
+            int metacode = RobotPlayer.rc.readBroadcast(GameConstants.BROADCAST_MAX_CHANNELS-1);
             // update inbox
-            Inbox.aggressionslider = (metacode>>>0)&0xFF; // first 8 bits
+            Inbox.aggressionslider = (metacode)&0xFF; // first 8 bits
             Inbox.vpslider = (metacode>>>8)&0xFF; // bits 8-16
-            Inbox.items = items.toArray(new SpottedTree[items.size()]);
+            Inbox.items = items.toArray(new SpottedItem[items.size()]);
         } catch (GameActionException e) {
             System.err.println("out of bounds broadcast");
             e.printStackTrace();
@@ -109,7 +108,7 @@ public class MessageReader {
 
     static void write(SpottedRobot robot){
         // metadata
-        int leading_packet = RobotPlayer.rc.getRoundNum() << 32-12; // shift turn into most significant 12 bits
+        int leading_packet = RobotPlayer.rc.getRoundNum() << (32-12); // shift turn into most significant 12 bits
         if(RobotPlayer.rc.getTeam() == Team.A){
             leading_packet |= TEAM_A_FLAG;
         }

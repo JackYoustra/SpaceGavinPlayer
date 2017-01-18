@@ -58,6 +58,7 @@ public strictfp class RobotPlayer {
         System.out.println("Post-inbox, cycles left: " + Clock.getBytecodesLeft());
         sense();
         System.out.println("Post-sense, cycles left: " + Clock.getBytecodesLeft());
+        if(rc.getRoundNum() > 60)
         dodge();
         System.out.println("Post-dodge, cycles left: " + Clock.getBytecodesLeft());
         //dump();
@@ -314,35 +315,43 @@ public strictfp class RobotPlayer {
             runCommon();
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
-                MapLocation myLocation = rc.getLocation();
-
-                // See if there are any nearby enemy robots
-                RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
+                final SpottedRobot[] robots = arena.getRobots();
 
                 // If there are some...
                 if (robots.length > 0) {
                     // detect arkan
                     boolean found = false;
-                    for(RobotInfo r : robots){
-                        if(r.type == RobotType.ARCHON){
+                    for(SpottedRobot r : robots){
+                        final RobotInfo spottedInformation = r.spottedInformation;
+                        if(spottedInformation.team == rc.getTeam()) continue;
+                        final MapLocation playerLocation = rc.getLocation();
+                        final Direction directionToEnemy = playerLocation.directionTo(spottedInformation.location);
+                        if(spottedInformation.type == RobotType.ARCHON && r.turnSpotted == rc.getRoundNum()){
                             found = true;
-                            final Direction directionToEnemy = rc.getLocation().directionTo(r.location);
-                            if(rc.canFirePentadShot()) {
-                                rc.firePentadShot(directionToEnemy);
-                            }
-                            // move
-                            if(rc.canMove(directionToEnemy)){
+                            // move, don't wanna outrun bullet
+                            if(rc.getRoundNum() <= 60 && rc.canMove(directionToEnemy)){
                                 rc.move(directionToEnemy);
+                                System.out.println("can move, moving");
+                            }
+                            if(playerLocation.distanceTo(spottedInformation.location) > 6){
+                                if(rc.canFireSingleShot()){
+                                    rc.fireSingleShot(directionToEnemy);
+                                }
+                            }
+                            else if(rc.canFirePentadShot()) {
+                                rc.firePentadShot(directionToEnemy);
                             }
                             break;
                         }
+                        else{
+                            // And we have enough bullets, and haven't attacked yet this turn...
+                            if (rc.canFireSingleShot() && found && r.turnSpotted == rc.getRoundNum()) {
+                                // ...Then fire a bullet in the direction of the enemy.
+                                rc.fireSingleShot(directionToEnemy);
+                            }
+                        }
                     }
 
-                    // And we have enough bullets, and haven't attacked yet this turn...
-                    if (rc.canFireSingleShot()) {
-                        // ...Then fire a bullet in the direction of the enemy.
-                        rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
-                    }
                 }
 
                 else if (!rc.hasMoved()) {
@@ -383,10 +392,6 @@ public strictfp class RobotPlayer {
                     // Move randomly
                     tryMove(randomDirection());
                 }
-                // Broadcast archon's location for other robots on the team to know
-                MapLocation myLocation = rc.getLocation();
-                rc.broadcast(0,(int)myLocation.x);
-                rc.broadcast(1,(int)myLocation.y);
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -397,7 +402,7 @@ public strictfp class RobotPlayer {
             }
         }
     }
-    
+
 
     static void runGardener() throws GameActionException {
         System.out.println("I'm a gardener!");
@@ -409,13 +414,6 @@ public strictfp class RobotPlayer {
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
                 turnsAlive++;
-
-
-
-                // Listen for home archon's location
-                int xPos = rc.readBroadcast(0);
-                int yPos = rc.readBroadcast(1);
-                MapLocation archonLoc = new MapLocation(xPos,yPos);
 
                 // Generate a random direction
                 Direction dir = randomDirection();

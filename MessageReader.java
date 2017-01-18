@@ -57,7 +57,7 @@ public class MessageReader {
                     }
 
                     int id = third_packet&0xFFFF; // first 16 bits
-                    System.out.println("ID: " + id + "; Packet: " + position);
+                    //System.out.println("ID: " + id + "; Packet: " + position);
 
                     // get health
                     int health = (leading_packet>>>6)&0xFF; // bits 6-14
@@ -109,7 +109,7 @@ public class MessageReader {
     static void write(SpottedRobot robot){
         // metadata
         int leading_packet = RobotPlayer.rc.getRoundNum() << (32-12); // shift turn into most significant 12 bits
-        if(RobotPlayer.rc.getTeam() == Team.A){
+        if(robot.spottedInformation.team == Team.A){
             leading_packet |= TEAM_A_FLAG;
         }
         leading_packet |= ((int)robot.spottedInformation.health) << 6; // truncate health

@@ -53,14 +53,25 @@ public strictfp class RobotPlayer {
 
     static void runCommon(){
         System.out.println("in common");
-        // read from message cache & update map
+        // read from message cache & update map, reset seeker head first
         updateFromInbox();
         System.out.println("Post-inbox, cycles left: " + Clock.getBytecodesLeft());
         sense();
         System.out.println("Post-sense, cycles left: " + Clock.getBytecodesLeft());
         dodge();
         System.out.println("Post-dodge, cycles left: " + Clock.getBytecodesLeft());
+        //dump();
         // transmit - new enemies, trees
+    }
+
+    static void dump(){
+        try {
+            for (int i = 0; i < 20; i++) {
+                System.out.println(i + ": " + rc.readBroadcast(i));
+            }
+        }catch(GameActionException e){
+
+        }
     }
 
     // returns whether or not dodged
@@ -256,7 +267,11 @@ public strictfp class RobotPlayer {
                 // if not checked, update internal map
                 arena.updateRobot(srobot);
                 // and broadcast
+                //System.out.println("Writing " + srobot.spottedInformation.ID);
                 MessageReader.write(srobot);
+            }
+            else{
+                //System.out.println("Already see " + srobot.spottedInformation.ID);
             }
         }
         /*
@@ -312,8 +327,8 @@ public strictfp class RobotPlayer {
                 }
                 // Broadcast archon's location for other robots on the team to know
                 MapLocation myLocation = rc.getLocation();
-                rc.broadcast(0,(int)myLocation.x);
-                rc.broadcast(1,(int)myLocation.y);
+                //rc.broadcast(0,(int)myLocation.x);
+                //rc.broadcast(1,(int)myLocation.y);
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
